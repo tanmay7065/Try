@@ -4,12 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Video Calling App</title>
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
-  <!-- PeerJS for WebRTC signaling -->
   <script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
   <style>
-    /* Global Styles */
     * {
       margin: 0;
       padding: 0;
@@ -20,70 +16,39 @@
       background: linear-gradient(135deg, #141E30, #243B55);
       color: #fff;
       height: 100vh;
-      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.5s ease;
     }
-    /* Landing Screen */
     #landing {
       text-align: center;
-      animation: fadeIn 0.5s ease forwards;
     }
     #landing h1 {
-      font-size: 2.5rem;
-      margin-bottom: 20px;
+      font-size: 2rem;
+      margin-bottom: 10px;
     }
     #landing button,
     #landing input {
-      padding: 12px 24px;
-      font-size: 1rem;
+      padding: 10px 18px;
+      font-size: 0.9rem;
       border: none;
       border-radius: 20px;
-      margin: 10px;
+      margin: 5px;
       outline: none;
       transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-      position: relative;
-      overflow: hidden;
     }
     #landing button {
       background-color: #ffb703;
       color: #1d3557;
       cursor: pointer;
-      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
-    }
-    #landing button:hover {
-      transform: scale(1.05);
-      box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.4);
     }
     #landing input {
-      width: 180px;
+      width: 150px;
       text-align: center;
       border: 2px solid #ffb703;
       background: transparent;
       color: #fff;
-      transition: border-color 0.2s ease;
     }
-    #landing input:focus {
-      border-color: #f48c06;
-    }
-    /* Ripple effect for buttons */
-    button .ripple {
-      position: absolute;
-      border-radius: 50%;
-      transform: scale(0);
-      animation: rippleEffect 0.6s linear;
-      background: rgba(255, 255, 255, 0.7);
-      pointer-events: none; /* Added so the ripple does not block clicks */
-    }
-    @keyframes rippleEffect {
-      to {
-        transform: scale(4);
-        opacity: 0;
-      }
-    }
-    /* Call Screen */
     #callScreen {
       position: absolute;
       top: 0;
@@ -94,7 +59,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 20px;
+      padding: 15px;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.5s ease;
@@ -106,29 +71,26 @@
     #header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      font-size: 1.2rem;
-      padding: 0 20px;
+      font-size: 0.9rem;
+      padding: 5px 15px;
     }
     #codeDisplay,
     #timer {
       background: #ffb703;
       color: #1d3557;
-      padding: 5px 10px;
+      padding: 4px 8px;
       border-radius: 10px;
       font-weight: 600;
+      font-size: 0.8rem;
     }
-    /* Video Layout */
     #videoArea {
       position: relative;
       width: 100%;
-      height: calc(100vh - 180px); /* Adjust for header and controls */
+      height: calc(100vh - 160px);
       background: #000;
+      border-radius: 10px;
       overflow: hidden;
-      border-radius: 15px;
-      margin-bottom: 20px;
     }
-    /* Remote video: big background */
     #remoteContainer {
       width: 100%;
       height: 100%;
@@ -140,107 +102,61 @@
       height: 100%;
       object-fit: cover;
     }
-    /* Waiting message for remote video */
     #waitingMessage {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-size: 1.2rem;
-      font-weight: 600;
-      transition: opacity 0.3s ease;
-      z-index: 2;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.5);
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 0.8rem;
     }
-    /* Local video: small thumbnail */
     #localContainer {
       position: absolute;
-      bottom: 20px;
-      right: 20px;
-      width: 160px;
-      height: 200px;
+      bottom: 15px;
+      right: 15px;
+      width: 120px;
+      height: 150px;
       background: #1e293b;
       border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      z-index: 3;
     }
     #localContainer video {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
-    /* Overlays for notifications on local video */
-    .overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-size: 1.2rem;
-      font-weight: 600;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-    }
-    .overlay.show {
-      opacity: 1;
-    }
-    /* Controls */
     #controls {
       display: flex;
       justify-content: center;
-      gap: 15px;
+      gap: 10px;
       margin-top: 10px;
     }
     #controls button {
       background-color: #ffb703;
       color: #1d3557;
       border: none;
-      padding: 8px 16px;
-      font-size: 0.9rem;
-      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      border-radius: 15px;
       cursor: pointer;
-      transition: transform 0.2s ease, background-color 0.3s ease, box-shadow 0.2s ease;
-      position: relative;
-      overflow: hidden;
     }
-    #controls button:hover {
-      transform: scale(1.05);
-      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.4);
-    }
-    /* Toggle effect (when muted or video off) */
     #controls button.toggled {
       background-color: #f48c06;
       color: #fff;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
   </style>
 </head>
 <body>
-  <!-- Landing Screen -->
   <div id="landing">
-    <h1>Video Calling App</h1>
+    <h1>Video Calling</h1>
     <button id="hostBtn">Host</button>
     <div id="joinContainer">
       <input type="text" id="joinCode" placeholder="Enter Code" maxlength="4" />
       <button id="joinBtn">Join</button>
     </div>
   </div>
-  <!-- Call Screen -->
   <div id="callScreen">
     <div id="header">
       <div id="codeDisplay"></div>
@@ -249,11 +165,10 @@
     <div id="videoArea">
       <div id="remoteContainer">
         <video id="remoteVideo" autoplay playsinline></video>
-        <div id="waitingMessage">Waiting for the other person to join...</div>
+        <div id="waitingMessage">Waiting for the other person...</div>
       </div>
       <div id="localContainer">
         <video id="localVideo" autoplay playsinline muted></video>
-        <div class="overlay" id="localOverlay"></div>
       </div>
     </div>
     <div id="controls">
@@ -263,7 +178,6 @@
     </div>
   </div>
   <script>
-    // UI Elements
     const landing = document.getElementById('landing');
     const hostBtn = document.getElementById('hostBtn');
     const joinBtn = document.getElementById('joinBtn');
@@ -273,25 +187,20 @@
     const timerDisplay = document.getElementById('timer');
     const localVideo = document.getElementById('localVideo');
     const remoteVideo = document.getElementById('remoteVideo');
-    const localOverlay = document.getElementById('localOverlay');
     const waitingMessage = document.getElementById('waitingMessage');
-    const micBtn = document.getElementById('micBtn');
-    const videoBtn = document.getElementById('videoBtn');
-    const endCallBtn = document.getElementById('endCallBtn');
     
     let localStream;
     let currentCall;
     let peer;
-    let dataConnection = null;
     let timerInterval;
     let secondsElapsed = 0;
-    
-    // Helper: Format seconds to MM:SS
+
     function formatTime(sec) {
       const m = Math.floor(sec / 60).toString().padStart(2, '0');
       const s = (sec % 60).toString().padStart(2, '0');
       return `${m}:${s}`;
     }
+
     function startTimer() {
       secondsElapsed = 0;
       timerDisplay.innerText = formatTime(secondsElapsed);
@@ -300,74 +209,21 @@
         timerDisplay.innerText = formatTime(secondsElapsed);
       }, 1000);
     }
-    // Show Call Screen with animation
+
     function showCallScreen() {
       landing.style.display = 'none';
       callScreen.classList.add('active');
       startTimer();
     }
-    // Get local media (camera and mic)
+
     async function getLocalStream() {
-      try {
-        return await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      } catch (err) {
-        alert('Error accessing camera/microphone: ' + err.message);
-        throw err;
-      }
+      return await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     }
-    // Function to show overlay text on a video container for 3 seconds
-    function showOverlay(overlayElement, message) {
-      overlayElement.innerText = message;
-      overlayElement.classList.add('show');
-      setTimeout(() => {
-        overlayElement.classList.remove('show');
-      }, 3000);
-    }
-    // ---------------------
-    // Data channel message handler (for remote control messages)
-    function handleDataMessage(data) {
-      if (data.type === 'mute') {
-        if (data.value) {
-          showOverlay(localOverlay, 'Other party muted mic');
-        } else {
-          showOverlay(localOverlay, 'Other party unmuted mic');
-        }
-      } else if (data.type === 'video') {
-        if (data.value) {
-          showOverlay(localOverlay, 'Other party turned off camera');
-        } else {
-          showOverlay(localOverlay, 'Other party turned on camera');
-        }
-      } else if (data.type === 'call_end') {
-        showOverlay(localOverlay, 'Other party ended the call');
-        setTimeout(() => { location.reload(); }, 3000);
-      }
-    }
-    // ---------------------
-    // PeerJS Setup for Data Channel
-    function setupDataConnection(isHost, hostCode) {
-      if (isHost) {
-        peer.on('connection', (conn) => {
-          dataConnection = conn;
-          dataConnection.on('data', handleDataMessage);
-        });
-      } else {
-        peer.on('open', () => {
-          dataConnection = peer.connect(hostCode);
-          dataConnection.on('open', () => {
-            dataConnection.on('data', handleDataMessage);
-          });
-        });
-      }
-    }
-    // ---------------------
-    // Host Flow
+
     hostBtn.addEventListener('click', async () => {
-      console.log("Host button clicked");
       const hostCode = Math.floor(1000 + Math.random() * 9000).toString();
       codeDisplay.innerText = `Code: ${hostCode}`;
       peer = new Peer(hostCode);
-      setupDataConnection(true);
       localStream = await getLocalStream();
       localVideo.srcObject = localStream;
       peer.on('call', (call) => {
@@ -380,99 +236,14 @@
       });
       showCallScreen();
     });
-    // ---------------------
-    // Join Flow
+
     joinBtn.addEventListener('click', async () => {
-      console.log("Join button clicked");
       const hostCode = joinCodeInput.value.trim();
-      if (!hostCode || hostCode.length !== 4) {
-        alert('Please enter a valid 4-digit code.');
-        return;
-      }
       codeDisplay.innerText = `Connected to: ${hostCode}`;
       peer = new Peer();
-      setupDataConnection(false, hostCode);
       localStream = await getLocalStream();
       localVideo.srcObject = localStream;
-      peer.on('open', () => {
-        currentCall = peer.call(hostCode, localStream);
-        currentCall.on('stream', (remoteStream) => {
-          remoteVideo.srcObject = remoteStream;
-          waitingMessage.style.display = 'none';
-        });
-      });
       showCallScreen();
-    });
-    // ---------------------
-    // Controls
-    micBtn.addEventListener('click', () => {
-      console.log("Mic button clicked");
-      if (!localStream) return;
-      localStream.getAudioTracks().forEach(track => track.enabled = !track.enabled);
-      const audioEnabled = localStream.getAudioTracks()[0].enabled;
-      if (audioEnabled) {
-        micBtn.innerText = 'Mute Mic';
-        micBtn.classList.remove('toggled');
-        showOverlay(localOverlay, 'Mic On');
-      } else {
-        micBtn.innerText = 'Unmute Mic';
-        micBtn.classList.add('toggled');
-        showOverlay(localOverlay, 'Mic Off');
-      }
-      if (dataConnection && dataConnection.open) {
-        dataConnection.send({ type: 'mute', value: !audioEnabled });
-      }
-    });
-    videoBtn.addEventListener('click', () => {
-      console.log("Video button clicked");
-      if (!localStream) return;
-      localStream.getVideoTracks().forEach(track => track.enabled = !track.enabled);
-      const videoEnabled = localStream.getVideoTracks()[0].enabled;
-      if (videoEnabled) {
-        videoBtn.innerText = 'Stop Video';
-        videoBtn.classList.remove('toggled');
-        showOverlay(localOverlay, 'Camera On');
-      } else {
-        videoBtn.innerText = 'Start Video';
-        videoBtn.classList.add('toggled');
-        showOverlay(localOverlay, 'Camera Off');
-      }
-      if (dataConnection && dataConnection.open) {
-        dataConnection.send({ type: 'video', value: !videoEnabled });
-      }
-    });
-    endCallBtn.addEventListener('click', () => {
-      console.log("End Call button clicked");
-      if (dataConnection && dataConnection.open) {
-        dataConnection.send({ type: 'call_end' });
-      }
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-      if (currentCall) {
-        currentCall.close();
-      }
-      if (peer) {
-        peer.destroy();
-      }
-      clearInterval(timerInterval);
-      location.reload();
-    });
-    // Ripple effect for all buttons
-    document.querySelectorAll('button').forEach(btn => {
-      btn.addEventListener('click', function(e) {
-        const circle = document.createElement('span');
-        const diameter = Math.max(btn.clientWidth, btn.clientHeight);
-        const radius = diameter / 2;
-        circle.style.width = circle.style.height = `${diameter}px`;
-        circle.style.left = `${e.clientX - (btn.getBoundingClientRect().left + radius)}px`;
-        circle.style.top = `${e.clientY - (btn.getBoundingClientRect().top + radius)}px`;
-        circle.classList.add('ripple');
-        // Remove any existing ripple
-        const ripple = btn.getElementsByClassName('ripple')[0];
-        if (ripple) { ripple.remove(); }
-        btn.appendChild(circle);
-      });
     });
   </script>
 </body>
