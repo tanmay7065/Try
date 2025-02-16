@@ -75,6 +75,7 @@
       transform: scale(0);
       animation: rippleEffect 0.6s linear;
       background: rgba(255, 255, 255, 0.7);
+      pointer-events: none; /* Added so the ripple does not block clicks */
     }
     @keyframes rippleEffect {
       to {
@@ -156,7 +157,7 @@
       transition: opacity 0.3s ease;
       z-index: 2;
     }
-    /* Local video: small thumbnail (resized for better face display) */
+    /* Local video: small thumbnail */
     #localContainer {
       position: absolute;
       bottom: 20px;
@@ -317,5 +318,162 @@
     // Function to show overlay text on a video container for 3 seconds
     function showOverlay(overlayElement, message) {
       overlayElement.innerText = message;
-
-    
+      overlayElement.classList.add('show');
+      setTimeout(() => {
+        overlayElement.classList.remove('show');
+      }, 3000);
+    }
+    // ---------------------
+    // Data channel message handler (for remote control messages)
+    function handleDataMessage(data) {
+      if (data.type === 'mute') {
+        if (data.value) {
+          showOverlay(localOverlay, 'Other party muted mic');
+        } else {
+          showOverlay(localOverlay, 'Other party unmuted mic');
+        }
+      } else if (data.type === 'video') {
+        if (data.value) {
+          showOverlay(localOverlay, 'Other party turned off camera');
+        } else {
+          showOverlay(localOverlay, 'Other party turned on camera');
+        }
+      } else if (data.type === 'call_end') {
+        showOverlay(localOverlay, 'Other party ended the call');
+        setTimeout(() => { location.reload(); }, 3000);
+      }
+    }
+    // ---------------------
+    // PeerJS Setup for Data Channel
+    function setupDataConnection(isHost, hostCode) {
+      if (isHost) {
+        peer.on('connection', (conn) => {
+          dataConnection = conn;
+          dataConnection.on('data', handleDataMessage);
+        });
+      } else {
+        peer.on('open', () => {
+          dataConnection = peer.connect(hostCode);
+          dataConnection.on('open', () => {
+            dataConnection.on('data', handleDataMessage);
+          });
+        });
+      }
+    }
+    // ---------------------
+    // Host Flow
+    hostBtn.addEventListener('click', async () => {
+      console.log("Host button clicked");
+      const hostCode = Math.floor(1000 + Math.random() * 9000).toString();
+      codeDisplay.innerText = `Code: ${hostCode}`;
+      peer = new Peer(hostCode);
+      setupDataConnection(true);
+      localStream = await getLocalStream();
+      localVideo.srcObject = localStream;
+      peer.on('call', (call) => {
+        currentCall = call;
+        call.answer(localStream);
+        call.on('stream', (remoteStream) => {
+          remoteVideo.srcObject = remoteStream;
+          waitingMessage.style.display = 'none';
+        });
+      });
+      showCallScreen();
+    });
+    // ---------------------
+    // Join Flow
+    joinBtn.addEventListener('click', async () => {
+      console.log("Join button clicked");
+      const hostCode = joinCodeInput.value.trim();
+      if (!hostCode || hostCode.length !== 4) {
+        alert('Please enter a valid 4-digit code.');
+        return;
+      }
+      codeDisplay.innerText = `Connected to: ${hostCode}`;
+      peer = new Peer();
+      setupDataConnection(false, hostCode);
+      localStream = await getLocalStream();
+      localVideo.srcObject = localStream;
+      peer.on('open', () => {
+        currentCall = peer.call(hostCode, localStream);
+        currentCall.on('stream', (remoteStream) => {
+          remoteVideo.srcObject = remoteStream;
+          waitingMessage.style.display = 'none';
+        });
+      });
+      showCallScreen();
+    });
+    // ---------------------
+    // Controls
+    micBtn.addEventListener('click', () => {
+      console.log("Mic button clicked");
+      if (!localStream) return;
+      localStream.getAudioTracks().forEach(track => track.enabled = !track.enabled);
+      const audioEnabled = localStream.getAudioTracks()[0].enabled;
+      if (audioEnabled) {
+        micBtn.innerText = 'Mute Mic';
+        micBtn.classList.remove('toggled');
+        showOverlay(localOverlay, 'Mic On');
+      } else {
+        micBtn.innerText = 'Unmute Mic';
+        micBtn.classList.add('toggled');
+        showOverlay(localOverlay, 'Mic Off');
+      }
+      if (dataConnection && dataConnection.open) {
+        dataConnection.send({ type: 'mute', value: !audioEnabled });
+      }
+    });
+    videoBtn.addEventListener('click', () => {
+      console.log("Video button clicked");
+      if (!localStream) return;
+      localStream.getVideoTracks().forEach(track => track.enabled = !track.enabled);
+      const videoEnabled = localStream.getVideoTracks()[0].enabled;
+      if (videoEnabled) {
+        videoBtn.innerText = 'Stop Video';
+        videoBtn.classList.remove('toggled');
+        showOverlay(localOverlay, 'Camera On');
+      } else {
+        videoBtn.innerText = 'Start Video';
+        videoBtn.classList.add('toggled');
+        showOverlay(localOverlay, 'Camera Off');
+      }
+      if (dataConnection && dataConnection.open) {
+        dataConnection.send({ type: 'video', value: !videoEnabled });
+      }
+    });
+    endCallBtn.addEventListener('click', () => {
+      console.log("End Call button clicked");
+      if (dataConnection && dataConnection.open) {
+        dataConnection.send({ type: 'call_end' });
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      if (currentCall) {
+        currentCall.close();
+      }
+      if (peer) {
+        peer.destroy();
+      }
+      clearInterval(timerInterval);
+      location.reload();
+    });
+    // Ripple effect for all buttons
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        const circle = document.createElement('span');
+        const diameter = Math.max(btn.clientWidth, btn.clientHeight);
+        const radius = diameter / 2;
+        circle.style.width = circle.style.height = `${diameter}px`;
+        circle.style.left = `${e.clientX - (btn.getBoundingClientRect().left + radius)}px`;
+        circle.style.top = `${e.clientY - (btn.getBoundingClientRect().top + radius)}px`;
+        circle.classList.add('ripple');
+        // Remove any existing ripple
+        const ripple = btn.getElementsByClassName('ripple')[0];
+        if (ripple) { ripple.remove(); }
+        btn.appendChild(circle);
+      });
+    });
+  </script>
+</body>
+</html>
