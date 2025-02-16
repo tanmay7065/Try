@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Video Calling App</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
+  <!-- PeerJS for WebRTC signaling -->
+  <script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
+  <style>
+    /* Global Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+    body {
+      background: linear-gradient(135deg, #141E30, #243B55);
+      color: #fff;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.5s ease;
+    }
+    /* Landing Screen */
+    #landing {
+      text-align: center;
+      animation: fadeIn 0.5s ease forwards;
+    }
+    #landing h1 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+    }
+    #landing button,
+    #landing input {
+      padding: 12px 24px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 20px;
+      margin: 10px;
+      outline: none;
+      transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    #landing button {
+      background-color: #ffb703;
+      color: #1d3557;
+      cursor: pointer;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    #landing button:hover {
+      transform: scale(1.05);
+      box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.4);
+    }
+    #landing input {
+      width: 180px;
+      text-align: center;
+      border: 2px solid #ffb703;
+      background: transparent;
+      color: #fff;
+      transition: border-color 0.2s ease;
+    }
+    #landing input:focus {
+      border-color: #f48c06;
+    }
+    /* Call Screen */
+    #callScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+    #callScreen.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.2rem;
+      padding: 0 20px;
+    }
+    #codeDisplay, #timer {
+      background: #ffb703;
+      color: #1d3557;
+      padding: 5px 10px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    #videoArea {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 1200px;
+      margin: 20px 0;
+    }
+    .videoContainer {
+      position: relative;
+      width: 45%;
+      max-width: 500px;
+      background: #1e293b;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s ease;
+    }
+    .videoContainer:hover {
+      transform: scale(1.02);
+    }
+    video {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #000;
+    }
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .overlay.show {
+      opacity: 1;
+    }
+    #controls {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 10px;
+    }
+    #controls button {
+      background-color: #ffb703;
+      color: #1d3557;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    #controls button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Landing Screen -->
+  <div id="landing">
+    <h1>Video Calling App</h1>
+    <button id="hostBtn">Host</button>
+    <div id="joinContainer">
+      <input type="text" id="joinCode" placeholder="Enter Code" maxlength="4" />
+      <button id="joinBtn">Join</button>
+    </div>
+  </div>
+
+  <!-- Call Screen -->
+  <div id="callScreen">
+    <div id="header">
+      <div id="codeDisplay"></div>
+      <div id="timer">00:00</div>
+    </div>
+    <div id="videoArea">
+      <div class="videoContainer" id="localContainer">
+        <video id="localVideo" autoplay playsinline muted></video>
+        <div class="overlay" id="localOverlay"></div>
+      </div>
+      <div class="videoContainer" id="remoteContainer">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div class="overlay" id="remoteOverlay"></div>
+      </div>
+    </div>
+    <div id="controls">
+      <button id="micBtn">Mute Mic</button>
+      <button id="videoBtn">Stop Video</button>
+      <button id="endCallBtn">End Call</button>
+    </div>
+  </div>
+
+  <script>
+    // UI Elements
+    const landing = document.getElementById('landing');
+    const hostBtn = document.getElementById('hostBtn');
+    const joinBtn = document.getElementById('joinBtn');
+    const joinCodeInput = document.getElementById('joinCode');
+
+    const callScreen = document.getElementById('callScreen');
+    const codeDisplay = document.getElementById('codeDisplay');
+    const timerDisplay = document.getElementById('timer');
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const localOverlay = document.getElementById('localOverlay');
+    const remoteOverlay = document.getElementById('remoteOverlay');
+
+    const micBtn = document.getElementById('micBtn');
+    const videoBtn = document.getElementById('videoBtn');
+    const endCallBtn = document.getElementById('endCallBtn');
+
+    let localStream;
+    let currentCall;
+    let peer;
+    let timerInterval;
+    let secondsElapsed = 0;
+
+    // Helper: Format seconds to MM:SS
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+    
+    function startTimer() {
+      secondsElapsed = 0;
+      timerDisplay.innerText = formatTime(secondsElapsed);
+      timerInterval = setInterval(() => {
+        secondsElapsed++;
+        timerDisplay.innerText = formatTime(secondsElapsed);
+      }, 1000);
+    }
+    
+    // Show Call Screen with animation
+    function showCallScreen() {
+      landing.style.display = 'none';
+      callScreen.classList.add('active');
+      startTimer();
+    }
+
+    // Get local media (camera and mic)
+    async function getLocalStream() {
+      try {
+        return await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } catch (err) {
+        alert('Error accessing camera/microphone: ' + err.message);
+        throw err;
+      }
+    }
+
+    // Function to show overlay text on a video container for 3 seconds
+    function showOverlay(overlayElement, message) {
+      overlayElement.innerText = message;
+      overlayElement.classList.add('show');
+      setTimeout(() => {
+        overlayElement.classList.remove('show');
+      }, 3000);
+    }
+
+    // ---------------------
+    // Host Flow
+    // ---------------------
+    hostBtn.addEventListener('click', async () => {
+      // Generate a random 4-digit code
+      const hostCode = Math.floor(1000 + Math.random() * 9000).toString();
+      codeDisplay.innerText = `Code: ${hostCode}`;
+
+      // Create peer with hostCode as ID
+      peer = new Peer(hostCode);
+
+      // Get local media stream
+      localStream = await getLocalStream();
+      localVideo.srcObject = localStream;
+
+      // Listen for incoming calls
+      peer.on('call', (call) => {
+        currentCall = call;
+        call.answer(localStream); // Answer the call with our stream
+        call.on('stream', (remoteStream) => {
+          remoteVideo.srcObject = remoteStream;
+        });
+      });
+
+      // Immediately show call screen for host
+      showCallScreen();
+    });
+
+    // ---------------------
+    // Join Flow
+    // ---------------------
+    joinBtn.addEventListener('click', async () => {
+      const hostCode = joinCodeInput.value.trim();
+      if (!hostCode || hostCode.length !== 4) {
+        alert('Please enter a valid 4-digit code.');
+        return;
+      }
+      codeDisplay.innerText = `Connected to: ${hostCode}`;
+
+      // Create peer (ID auto-assigned)
+      peer = new Peer();
+
+      // Get local media stream
+      localStream = await getLocalStream();
+      localVideo.srcObject = localStream;
+
+      // When peer is open, call the host
+      peer.on('open', () => {
+        currentCall = peer.call(hostCode, localStream);
+        currentCall.on('stream', (remoteStream) => {
+          remoteVideo.srcObject = remoteStream;
+        });
+      });
+
+      showCallScreen();
+    });
+
+    // ---------------------
+    // Controls
+    // ---------------------
+    micBtn.addEventListener('click', () => {
+      if (!localStream) return;
+      // Toggle audio track
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      if (localStream.getAudioTracks()[0].enabled) {
+        micBtn.innerText = 'Mute Mic';
+        showOverlay(localOverlay, 'Mic On');
+      } else {
+        micBtn.innerText = 'Unmute Mic';
+        showOverlay(localOverlay, 'Mic Off');
+      }
+    });
+
+    videoBtn.addEventListener('click', () => {
+      if (!localStream) return;
+      // Toggle video track
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      if (localStream.getVideoTracks()[0].enabled) {
+        videoBtn.innerText = 'Stop Video';
+        showOverlay(localOverlay, 'Camera On');
+      } else {
+        videoBtn.innerText = 'Start Video';
+        showOverlay(localOverlay, 'Camera Off');
+      }
+    });
+
+    endCallBtn.addEventListener('click', () => {
+      // Stop all tracks
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      if (currentCall) {
+        currentCall.close();
+      }
+      if (peer) {
+        peer.destroy();
+      }
+      clearInterval(timerInterval);
+      // Reload the page to restart the app
+      location.reload();
+    });
+  </script>
+</body>
+</html>
